@@ -2,3 +2,6 @@ dist/*
 *.dat
 *.bc
 *.asm
+
+# OS X
+.DS_Store
