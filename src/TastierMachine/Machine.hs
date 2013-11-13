@@ -130,6 +130,30 @@ run = do
                           smem = (smem // [(rtp-2, result)]) }
           run
 
+        Instructions.Neq    -> do
+          let a = smem ! (rtp-1)
+          let b = smem ! (rtp-2)
+          let result = fromIntegral $ fromEnum (b /= a)
+          put $ machine { rpc = rpc + 1, rtp = rtp - 1,
+                          smem = (smem // [(rtp-2, result)]) }
+          run
+
+        Instructions.Lse    -> do
+          let a = smem ! (rtp-1)
+          let b = smem ! (rtp-2)
+          let result = fromIntegral $ fromEnum (b <= a)
+          put $ machine { rpc = rpc + 1, rtp = rtp - 1,
+                          smem = (smem // [(rtp-2, result)]) }
+          run
+
+        Instructions.Gte    -> do
+          let a = smem ! (rtp-1)
+          let b = smem ! (rtp-2)
+          let result = fromIntegral $ fromEnum (b >= a)
+          put $ machine { rpc = rpc + 1, rtp = rtp - 1,
+                          smem = (smem // [(rtp-2, result)]) }
+          run
+
         Instructions.Equ    -> do
           let a = smem ! (rtp-1)
           let b = smem ! (rtp-2)
