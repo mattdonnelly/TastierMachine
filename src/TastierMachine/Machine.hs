@@ -37,6 +37,7 @@
 module TastierMachine.Machine where
 import qualified TastierMachine.Instructions as Instructions
 import Data.Int (Int8, Int16)
+import Data.Char (chr)
 import Data.Char (intToDigit)
 import Numeric (showIntAtBase)
 import Data.Bits (complement)
@@ -202,6 +203,17 @@ run = do
           put $ machine { rpc = rpc + 1, rtp = rtp - 1 }
           run
 
+        Instructions.WriteStr  -> do
+          let pointer = smem ! (rtp-1)
+              length = dmem ! pointer
+              start = pointer + 1
+              end = pointer + length
+              chars = arrFoldr start end [] dmem
+
+          tell $ [map (chr . fromIntegral) chars]
+          put $ machine { rpc = rpc + 1, rtp = rtp - 1 }
+          run
+
         Instructions.Leave  -> do
           {-
             When we're leaving a procedure, we have to reset rbp to the
@@ -340,3 +352,9 @@ followChain limit n rbp smem =
   if n > limit then
     followChain limit (n-1) (smem ! (rbp+2)) smem
   else rbp
+
+arrFoldr index end arr mem
+  | index <= end = arrFoldr (index+1) end x mem
+  | otherwise = arr
+  where
+    x = (mem ! index) : arr
