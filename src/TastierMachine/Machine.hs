@@ -353,6 +353,7 @@ followChain limit n rbp smem =
     followChain limit (n-1) (smem ! (rbp+2)) smem
   else rbp
 
+arrFoldr :: Int16 -> Int16 -> [Int16] -> (Array Int16 Int16) -> [Int16]
 arrFoldr index end arr mem
   | index <= end = arrFoldr (index+1) end x mem
   | otherwise = arr
