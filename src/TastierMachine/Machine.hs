@@ -204,10 +204,10 @@ run = do
           run
 
         Instructions.WriteStr  -> do
-          let pointer = smem ! (rtp-1)
-              length = dmem ! pointer
-              start = pointer + 1
-              end = pointer + length
+          let address = (smem ! ( rtp - 1 )) - 3
+              length  = dmem ! address
+              start = address + 1
+              end = address + length
               chars = arrFoldr start end [] dmem
 
           tell $ [map (chr . fromIntegral) chars]
