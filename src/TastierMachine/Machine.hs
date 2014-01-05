@@ -206,11 +206,10 @@ run = do
         Instructions.WriteStr  -> do
           let address = (smem ! ( rtp - 1 )) - 3
               length  = dmem ! address
-              start = address + 1
-              end = address + length
-              chars = arrFoldr start end [] dmem
+              start   = address + 1
+              chars   = getStringChars start length dmem
 
-          tell $ [map (chr . fromIntegral) chars]
+          tell $ [chars]
           put $ machine { rpc = rpc + 1, rtp = rtp - 1 }
           run
 
@@ -326,6 +325,32 @@ run = do
                           smem = (smem // [(storeAddr, (smem ! (rtp-1)))]) }
           run
 
+        Instructions.LoadArr -> do
+          let lengths = getSizes a b dmem
+              indexes = getIndexes rtp b smem
+              offset = getMemOffset 0 b indexes lengths
+              address = a + offset + b
+
+          if isOutOfBounds b indexes lengths then
+            error $ "Error: Array index out of bounds"
+          else
+            put $ machine { rpc = rpc + 1,
+                            smem = (smem // [(rtp-1, (dmem ! (address-3)))]) }
+          run
+
+        Instructions.StoArr -> do
+          let lengths = getSizes a b dmem
+              indexes = getIndexes rtp b smem
+              offset = getMemOffset 0 b indexes lengths
+              address = a + offset + b
+
+          if isOutOfBounds b indexes lengths then
+            error $ "Error: Array index out of bounds"
+          else
+            put $ machine { rpc = rpc + 1, rtp = rtp-b-1,
+                            dmem = (dmem // [(address-3, (smem ! (rtp-b-1)))]) }
+          run
+
         Instructions.Call   -> do
           {-
             CALL gets passed the lexical level delta in slot a, and the
@@ -353,9 +378,49 @@ followChain limit n rbp smem =
     followChain limit (n-1) (smem ! (rbp+2)) smem
   else rbp
 
-arrFoldr :: Int16 -> Int16 -> [Int16] -> (Array Int16 Int16) -> [Int16]
-arrFoldr index end arr mem
-  | index <= end = arrFoldr (index+1) end x mem
-  | otherwise = arr
+{-
+getStringChars :: Int16 -> Int16 -> [Int16] -> (Array Int16 Int16) -> [Int16]
+getStringChars index end arr mem
+  | index <= end = getStringChars (index+1) end x mem
+  | otherwise    = arr
   where
     x = (mem ! index) : arr
+-}
+
+getStringChars :: Int16 -> Int16 -> (Array Int16 Int16) -> [Char]
+getStringChars address length mem
+  | length == 0  = []
+  | otherwise    = getStringChars (address+1) (length-1) mem ++ [currentChar]
+  where currentChar = chr $ fromIntegral (mem ! address)
+
+getSizes :: Int16 -> Int16 -> (Array Int16 Int16) -> [Int16]
+getSizes address dimension dmem
+  | dimension == 0  = []
+  | otherwise       = currentSize : getSizes address (dimension-1) dmem
+  where currentSize = dmem ! (address+dimension-4)
+
+getIndexes :: Int16 -> Int16 -> (Array Int16 Int16) -> [Int16]
+getIndexes rtp dimension smem
+  | dimension == 0  = []
+  | otherwise       = getIndexes rtp (dimension-1) smem ++ [currentIndex]
+  where currentIndex = smem ! (rtp-dimension)
+
+getMemOffset :: Int16 -> Int16 -> [Int16] -> [Int16] -> Int16
+getMemOffset i dimension indexes sizes
+  | i == dimension  = 0
+  | otherwise       = (index * dimensionOffset) + (getMemOffset (i+1) dimension indexes sizes)
+  where index           = (indexes !! (fromIntegral i))
+        dimensionOffset = getDimensionOffset (i-1) sizes
+
+getDimensionOffset :: Int16 -> [Int16] -> Int16
+getDimensionOffset n sizes
+  | n == -1    = 1
+  | otherwise  = (sizes !! (fromIntegral n)) * getDimensionOffset (n-1) sizes
+
+isOutOfBounds :: Int16 -> [Int16] -> [Int16] -> Bool
+isOutOfBounds dimension indexes sizes
+  | dimension == 0                = False
+  | index < 0 || index >= length  = True
+  | otherwise                     = isOutOfBounds (dimension-1) indexes sizes
+  where index  = indexes !! (fromIntegral dimension-1)
+        length = sizes !! (fromIntegral dimension-1)
