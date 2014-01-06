@@ -326,10 +326,11 @@ run = do
           run
 
         Instructions.LoadArr -> do
-          let lengths = getSizes a b dmem
+          let pointer = dmem ! (a-3)
+              lengths = getSizes pointer b dmem
               indexes = getIndexes rtp b smem
               offset = getMemOffset 0 b indexes lengths
-              address = a + offset + b
+              address = pointer + offset + b
 
           if isOutOfBounds b indexes lengths then
             error $ "Error: Array index out of bounds"
@@ -339,10 +340,11 @@ run = do
           run
 
         Instructions.StoArr -> do
-          let lengths = getSizes a b dmem
+          let pointer = dmem ! (a-3)
+              lengths = getSizes pointer b dmem
               indexes = getIndexes rtp b smem
               offset = getMemOffset 0 b indexes lengths
-              address = a + offset + b
+              address = pointer + offset + b
 
           if isOutOfBounds b indexes lengths then
             error $ "Error: Array index out of bounds"
