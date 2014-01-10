@@ -327,12 +327,12 @@ run = do
 
         Instructions.LoadArr -> do
           let pointer = dmem ! (a-3)
-              lengths = getSizes pointer b dmem
+              sizes = getSizes pointer b dmem
               indexes = getIndexes rtp b smem
-              offset = getMemOffset 0 b indexes lengths
+              offset = getMemOffset 0 b indexes sizes
               address = pointer + offset + b
 
-          if isOutOfBounds b indexes lengths then
+          if isOutOfBounds b indexes sizes then
             error $ "Error: Array index out of bounds"
           else
             put $ machine { rpc = rpc + 1,
@@ -341,12 +341,12 @@ run = do
 
         Instructions.StoArr -> do
           let pointer = dmem ! (a-3)
-              lengths = getSizes pointer b dmem
+              sizes = getSizes pointer b dmem
               indexes = getIndexes rtp b smem
-              offset = getMemOffset 0 b indexes lengths
+              offset = getMemOffset 0 b indexes sizes
               address = pointer + offset + b
 
-          if isOutOfBounds b indexes lengths then
+          if isOutOfBounds b indexes sizes then
             error $ "Error: Array index out of bounds"
           else
             put $ machine { rpc = rpc + 1, rtp = rtp-b-1,
@@ -381,32 +381,35 @@ followChain limit n rbp smem =
   else rbp
 
 {-
-getStringChars :: Int16 -> Int16 -> [Int16] -> (Array Int16 Int16) -> [Int16]
-getStringChars index end arr mem
-  | index <= end = getStringChars (index+1) end x mem
-  | otherwise    = arr
-  where
-    x = (mem ! index) : arr
+  Loads an array of chars from data memory of a specified length and from a specified address
 -}
-
 getStringChars :: Int16 -> Int16 -> (Array Int16 Int16) -> [Char]
 getStringChars address length mem
   | length == 0  = []
   | otherwise    = getStringChars (address+1) (length-1) mem ++ [currentChar]
   where currentChar = chr $ fromIntegral (mem ! address)
 
+{-
+  Loads the sizes of each dimension of an array from data memory from a specified address
+-}
 getSizes :: Int16 -> Int16 -> (Array Int16 Int16) -> [Int16]
-getSizes address dimension dmem
-  | dimension == 0  = []
-  | otherwise       = currentSize : getSizes address (dimension-1) dmem
-  where currentSize = dmem ! (address+dimension-4)
+getSizes address count dmem
+  | count == 0  = []
+  | otherwise       = currentSize : getSizes address (count-1) dmem
+  where currentSize = dmem ! (address+count-4)
 
+{-
+  Loads the each of the array access indexes from stack memory
+-}
 getIndexes :: Int16 -> Int16 -> (Array Int16 Int16) -> [Int16]
-getIndexes rtp dimension smem
-  | dimension == 0  = []
-  | otherwise       = getIndexes rtp (dimension-1) smem ++ [currentIndex]
-  where currentIndex = smem ! (rtp-dimension)
+getIndexes rtp count smem
+  | count == 0  = []
+  | otherwise       = getIndexes rtp (count-1) smem ++ [currentIndex]
+  where currentIndex = smem ! (rtp-count)
 
+{-
+  Calculates memory offset for an array with specified dimension sizes and access indexes
+-}
 getMemOffset :: Int16 -> Int16 -> [Int16] -> [Int16] -> Int16
 getMemOffset i dimension indexes sizes
   | i == dimension  = 0
@@ -414,11 +417,18 @@ getMemOffset i dimension indexes sizes
   where index           = (indexes !! (fromIntegral i))
         dimensionOffset = getDimensionOffset (i-1) sizes
 
+{-
+  Calculates memory offset of an array's dimension
+-}
 getDimensionOffset :: Int16 -> [Int16] -> Int16
 getDimensionOffset n sizes
   | n == -1    = 1
   | otherwise  = (sizes !! (fromIntegral n)) * getDimensionOffset (n-1) sizes
 
+
+{-
+  Determines if any of the of the array access indexes are outsize the bounds of the array
+-}
 isOutOfBounds :: Int16 -> [Int16] -> [Int16] -> Bool
 isOutOfBounds dimension indexes sizes
   | dimension == 0                = False
